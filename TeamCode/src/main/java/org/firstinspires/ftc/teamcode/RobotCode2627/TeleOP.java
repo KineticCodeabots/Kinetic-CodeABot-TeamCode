@@ -67,7 +67,6 @@ public class TeleOP extends OpMode {
 
         double GateClosed = 0;
         double GateOpened = 1;
-        double FIdown = 1;
         double FIup = 0;
 
         // Gamepad 2: intake; 1000 encoder ticks/s (from your original code).
@@ -97,21 +96,23 @@ public class TeleOP extends OpMode {
         if(Y && !yWasDown){
             drive.setFIpos(FIup);
         }else if(B && !BWasDown){
+            double FIdown = 1;
             drive.setFIpos(FIdown);
         }
 
         leftWasDown = left;
         rightWasDown = right;
         upWasDown = up;
-        LeftDPadWasDown = DpadLeft;
+        LeftDPadWasDown = DpadLeft;               
         RightDPadWasDown = DpadRight;
         yWasDown = Y;
         BWasDown = B;
 
+
         // Read camera ONCE each loop, share result with turret + shooter.
         drive.updateVision();
 
-        // Hold gamepad2 right bumper: auto-aim. Otherwise manual right stick X.
+        // Hold gamepad2 right bumper: auto-aim. Otherwise, manual right stick X.
         drive.controlTurret(gamepad2.right_bumper, gamepad2.right_stick_x);
 
         // G2 LT: low-speed RPM TEST. G2 RT: distance-based RPM (after calibration).
@@ -132,7 +133,7 @@ public class TeleOP extends OpMode {
         telemetry.addData("Turret power", "%.3f", drive.getTurretPower());
         telemetry.addData("Shooter status", drive.getShooterStatus());
         telemetry.addData("Flywheel target RPM", "%.0f", drive.getFlywheelTargetRPM());
-        telemetry.addData("Left RPM", "%.0f", drive.getLeftFlywheelRPM());
+        telemetry.addData("Left RPM", "%.0f", drive.getLeftFlywheelRPM());     // hopefully these should be the same
         telemetry.addData("Right RPM", "%.0f", drive.getRightFlywheelRPM());
         telemetry.addData("At speed", drive.isFlywheelAtSpeed());
         

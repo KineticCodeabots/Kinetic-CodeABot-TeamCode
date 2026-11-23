@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode.RobotCode2627;
 
+import androidx.annotation.NonNull;
+
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.hardware.limelightvision.LLResultTypes;
@@ -19,16 +21,23 @@ import java.util.List;
  * BIO-BUZZ hardware: mecanum, intake, direct-drive flywheels and 200-degree turret.
  * Gate servo intentionally NOT initialized or commanded.
  */
+// Main hardware class responsible for initialising and controlling the robot's drive system, intake, flywheels, turret, Limelight and servos.
 public class init_class {
     public enum Alliance { RED, BLUE }
     public enum TargetMode { AUTO, SCORING, AUDIENCE }
 
+    // Drive motors used for mecanum movement.
     private DcMotorEx frontLeft, backLeft, frontRight, backRight;
+
+    // Motors responsible for collecting game elements and launching them.
     private DcMotorEx intake, flywheelLeft, flywheelRight, turret;
+
+    // Servos used to control the turret gate and flower intake mechanisms
     private Servo TurretGate, FLowerIntakeL, FlowerIntakeR;
     private Limelight3A limelight;
 
-    // ================== CHECK THESE SETTINGS ==================
+    // ================== Config Settings ==================
+    //Change these settings based on testing the robot
     private static final int APRILTAG_PIPELINE = 0; // Must be AprilTag pipeline.
     private static final long MAX_CAMERA_AGE_MS = 250;
     private static final long AUTO_CELL_CHANGE_DELAY_MS = 350;
@@ -37,11 +46,14 @@ public class init_class {
     // UltraPlanetary cartridges, then 25-tooth pinion to 100-tooth ring.
     // IMPORTANT: change these ratios if the installed 20:1 gearbox differs.
     private static final double MOTOR_ENCODER_TICKS_PER_REV = 28.0;
+
+    // Turret configuration values used to calculate encoder movement, limit the turret's rotation and control its movement speed.
     private static final double GEARBOX_RATIO = (68.0 / 13.0) * (76.0 / 21.0);
     private static final double EXTERNAL_GEAR_RATIO = 100.0 / 25.0;
     private static final double TURRET_TICKS_PER_REV =
             MOTOR_ENCODER_TICKS_PER_REV * GEARBOX_RATIO * EXTERNAL_GEAR_RATIO;
-    private static final double TURRET_SOFT_LIMIT_DEG = 90.0;
+    private static final double TURRET_SOFT_LIMIT_DEG = 90.0; // Turrets hardware limit is around 200 degrees, however would rather have the turret
+    // have a 10 degree safety margin
     private static final double TURRET_LIMIT_SLOW_ZONE_DEG = 12.0;
     private static final double MAX_TURRET_POWER = 0.15;
     private static final double MANUAL_STICK_DEADZONE = 0.08;
@@ -56,14 +68,21 @@ public class init_class {
     // Flywheels: REV HD Hex no gearbox, directly attached to 90 mm wheels.
     // Set these motor types correctly in the FTC Robot Configuration.
     // FTC setVelocity(rpm*6, AngleUnit.DEGREES) uses configured encoder spec.
+
+    // Flywheel settings used to control shooting speed.
+    // RPM values will need to be calibrated through actual robot testing.
     private static final double FLYWHEEL_TEST_RPM = 900.0;
     private static final double MAX_SHOOTER_RPM = 3800.0;
+
+    // Distance-based shooting table.
+    // Each distance corresponds to a target flywheel RPM.
+    // These are placeholder values until proper testing is completed.
     private static final double RPM_TOLERANCE = 150.0;
     // Set TRUE only after replacing the sample distance/RPM pairs with tests.
     public static final boolean DISTANCE_RPM_CALIBRATED = false;
     // PLACEHOLDERS ONLY; not correct/proven speeds for a 15-degree launcher.
     private static final double[] SHOOT_DIST_M = {1.0, 2.0, 3.0, 4.0};
-    private static final double[] SHOOT_RPM = {1400, 2000, 2700, 3400};
+    private static final double[] SHOOT_RPM = {1400, 2000, 2700, 3400}; // to be calibrated when testing
     private static final double MIN_VALID_DIST_M = 0.3;
     private static final double MAX_VALID_DIST_M = 8.0;
     // ===========================================================
@@ -83,6 +102,8 @@ public class init_class {
     private String shooterStatus = "OFF";
     private final ElapsedTime clock = new ElapsedTime();
 
+
+    // Initialises all robot hardware using the FTC HardwareMap. Sets motor directions, operating modes, braking behaviour and starting positions.
     public void init(HardwareMap hwMap) {
         frontLeft = hwMap.get(DcMotorEx.class, "frontLeft");
         backLeft = hwMap.get(DcMotorEx.class, "backLeft");
@@ -97,12 +118,14 @@ public class init_class {
         FlowerIntakeR = hwMap.get(Servo.class, "FlowerIntakeR");
         FLowerIntakeL = hwMap.get(Servo.class, "FlowerIntakeL");
 
+        // Sets motor directions to ensure that positive power produces the expected physical movement.
         frontLeft.setDirection(DcMotorSimple.Direction.REVERSE);
         backLeft.setDirection(DcMotorSimple.Direction.REVERSE);
         flywheelRight.setDirection(DcMotorSimple.Direction.REVERSE);
         turret.setDirection(DcMotorSimple.Direction.FORWARD);
         FLowerIntakeL.setDirection(Servo.Direction.REVERSE);
 
+        // Configures the motors to use encoders where required.The turret uses open-loop power control while still reading encoder positions.
         frontLeft.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         backLeft.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         frontRight.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
@@ -122,6 +145,7 @@ public class init_class {
         flywheelRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
 
         // Start stationary. In particular, NEVER auto-reset turret encoder here.
+        // Ensures all mechanisms begin in a safe stationary state before the robot starts operating.
         turret.setPower(0);
         intake.setVelocity(0);
         flywheelLeft.setVelocity(0);
@@ -132,36 +156,44 @@ public class init_class {
         FLowerIntakeL.setPosition(0);
         clock.reset();
 
+        // Starts the Limelight and selects the AprilTag detection pipeline used by the robot's automatic targeting system.
         limelight.setPollRateHz(60);
         limelight.pipelineSwitch(APRILTAG_PIPELINE);
         limelight.start();
     }
 
+    // Controls the robot's mecanum drive using forward, sideways and rotational movement inputs.
     public void driveMotors(double forward, double strafe, double turn) {
         // Optional joystick deadzone applied independently.
-        if (Math.abs(forward) < 0.05) forward = 0;
-        if (Math.abs(strafe) < 0.05) strafe = 0;
-        if (Math.abs(turn) < 0.05) turn = 0;
-        double fl = forward + strafe + turn;
-        double bl = forward - strafe + turn;
-        double fr = forward - strafe - turn;
-        double br = forward + strafe - turn;
+        // Ignores small joystick movements to prevent unwanted movement caused by minor controller stick input.
+        if (Math.abs(forward) < 0.1) forward = 0;
+        if (Math.abs(strafe) < 0.1) strafe = 0;
+        if (Math.abs(turn) < 0.1) turn = 0;
+        // Calculates the required power for each wheel based on the requested forward, strafe and turning movements.
+        double flPower = forward + strafe + turn;
+        double blPower = forward - strafe + turn;
+        double frPower = forward + strafe - turn;
+        double brPower = forward - strafe - turn;
+        // Normalises the motor powers so that no wheel receives a power value greater than the allowed range.
         double denom = Math.max(1.0,
-                Math.max(Math.max(Math.abs(fl), Math.abs(bl)),
-                        Math.max(Math.abs(fr), Math.abs(br))));
-        frontLeft.setPower(fl / denom);
-        backLeft.setPower(bl / denom);
-        frontRight.setPower(fr / denom);
-        backRight.setPower(br / denom);
+                Math.max(Math.max(Math.abs(flPower), Math.abs(blPower)),
+                        Math.max(Math.abs(frPower), Math.abs(brPower))));
+        frontLeft.setPower(flPower / denom);
+        backLeft.setPower(blPower / denom);
+        frontRight.setPower(frPower / denom);
+        backRight.setPower(brPower / denom);
     }
 
     public void setIntakeVelocity(double ticksPerSecond) {
+        // Sets the intake motor's operating speed in encoder ticks per second.
         intake.setVelocity(ticksPerSecond);
     }
     public void setGatePOS(double GatePos){
+        // Sets the position of the turret gate servo.
         TurretGate.setPosition(GatePos);
     }
     public void setFIpos(double FIpos) {
+        // Moves both flower intake servos to the requested position.
         FLowerIntakeL.setPosition(FIpos);
         FlowerIntakeR.setPosition(FIpos);
     }
@@ -171,6 +203,8 @@ public class init_class {
     public TargetMode getTargetMode() { return targetMode; }
     public TargetMode getActiveCell() { return activeCell; }
 
+    // Sets the robot's alliance colour.
+    // Clears existing targeting information when the alliance changes.
     public void setAlliance(Alliance selected) {
         allianceSelected = true;
         if (alliance != selected) {
@@ -181,6 +215,8 @@ public class init_class {
         }
     }
 
+    // Changes the targeting mode between automatic, scoring and audience.
+    // Resets the current target when a new mode is selected.
     public void setTargetMode(TargetMode mode) {
         if (mode != targetMode) {
             targetMode = mode;
@@ -193,6 +229,7 @@ public class init_class {
         }
     }
 
+    // Checks whether an AprilTag ID belongs to the selected alliance and target group.
     private boolean isInGroup(int id, TargetMode cell) {
         if (alliance == Alliance.RED) {
             return cell == TargetMode.SCORING
@@ -202,8 +239,10 @@ public class init_class {
                 ? id >= 42 && id <= 45 : id >= 38 && id <= 41;
     }
 
+    // Finds the most suitable visible AprilTag.
+    // Prioritises the previously selected tag to prevent unnecessary switching between targets.
     private LLResultTypes.FiducialResult bestTag(
-            List<LLResultTypes.FiducialResult> tags, TargetMode cell) {
+            @NonNull List<LLResultTypes.FiducialResult> tags, TargetMode cell) {
         LLResultTypes.FiducialResult best = null;
         double minAbsTx = Double.POSITIVE_INFINITY;
         for (LLResultTypes.FiducialResult tag : tags) {
@@ -220,6 +259,7 @@ public class init_class {
         return best;
     }
 
+    // Resets all stored targeting information when no valid AprilTag target is available.
     private void clearTarget() {
         targetVisible = false;
         selectedTagId = -1;
@@ -227,11 +267,13 @@ public class init_class {
         horizontalDistanceM = Double.NaN;
     }
 
+    // Updates the robot's targeting information using the latest Limelight camera result.
     public void updateVision() {
         if (!allianceSelected) {
             clearTarget();
             return;
         }
+        // Rejects invalid, outdated or incorrect-pipeline camera results to prevent the robot from using unreliable targeting information.
         LLResult result = limelight.getLatestResult();
         if (result == null || !result.isValid()
                 || limelight.getTimeSinceLastUpdate() < 0
@@ -241,6 +283,8 @@ public class init_class {
             return;
         }
 
+        // AUTO mode initially prefers scoring targets.
+        // If the current target group disappears, the robot waits before switching to the other visible target group.
         List<LLResultTypes.FiducialResult> tags = result.getFiducialResults();
         if (tags == null || tags.isEmpty()) {
             clearTarget();
@@ -284,6 +328,7 @@ public class init_class {
         horizontalDistanceM = distanceToTagMeters(chosen);
     }
 
+    // Calculates the horizontal distance between the camera and an AprilTag using the camera-space X and Z coordinates.
     private double distanceToTagMeters(LLResultTypes.FiducialResult tag) {
         // Limelight target pose in camera space: X right, Y vertical, Z forward.
         // X-Z plane gives horizontal camera-to-tag distance (not goal opening).
@@ -299,6 +344,8 @@ public class init_class {
         return d;
     }
 
+    // Resets the turret encoder to establish its centre position.
+    //This must be performed deliberately by the operator during INIT.
     public void zeroTurretAtCenter() {
         // Called only by deliberate operator press in INIT.
         turret.setPower(0);
@@ -309,6 +356,8 @@ public class init_class {
 
     public boolean isTurretReady() { return turretZeroed; }
     public int getTurretPosition() { return turret.getCurrentPosition(); }
+
+    // Converts the turret's maximum allowed rotation in degrees into the corresponding encoder tick limit.
     public int getTurretLimitTicks() {
         return (int) Math.round(TURRET_TICKS_PER_REV * TURRET_SOFT_LIMIT_DEG / 360.0);
     }
@@ -318,6 +367,8 @@ public class init_class {
     }
     public double getTurretPower() { return appliedTurretPower; }
 
+    // Applies safety limits to turret movement.
+    // Prevents movement beyond the software rotation limits and gradually reduces power near the limits.
     private void limitedTurretPower(double requested) {
         if (!turretZeroed) requested = 0;
         requested = Math.max(-MAX_TURRET_POWER,
@@ -345,16 +396,19 @@ public class init_class {
         appliedTurretPower = requested;
     }
 
+    // Controls the turret using either automatic Limelight aiming or manual controller input.
     public void controlTurret(boolean autoAimHeld, double manualX) {
         if (!turretZeroed) {
             limitedTurretPower(0);
             return;
         }
         if (autoAimHeld) {
+
             if (!targetVisible) {
                 limitedTurretPower(0); // Never search blindly.
                 return;
             }
+            // Calculates the horizontal aiming error between the detected AprilTag and the desired camera alignment.
             double error = txDegrees - AIM_OFFSET_DEGREES;
             if (Math.abs(error) <= AIM_TOLERANCE_DEGREES) {
                 limitedTurretPower(0);
@@ -367,6 +421,7 @@ public class init_class {
         }
     }
 
+    // Calculates the required shooting RPM based on the measured distance to the AprilTag using linear interpolation.
     private double speedForDistance(double meters) {
         if (Double.isNaN(meters) || Double.isInfinite(meters)
                 || meters < SHOOT_DIST_M[0]
@@ -383,9 +438,12 @@ public class init_class {
         return SHOOT_RPM[SHOOT_RPM.length - 1];
     }
 
+    // Controls the flywheel shooting system.
+    // Supports a fixed test speed and an automatic distance-based speed.
     public void controlFlywheels(double testTrigger, double autoTrigger) {
         double rpm = 0;
         if (testTrigger > 0.5) {
+            // Automatic shooting is disabled until the distance-to-RPM calibration values have been tested and confirmed.
             rpm = FLYWHEEL_TEST_RPM;
             shooterStatus = "LOW-RPM TEST";
         } else if (autoTrigger > 0.5) {
@@ -400,6 +458,7 @@ public class init_class {
         } else {
             shooterStatus = "OFF";
         }
+        // Converts the requested RPM into degrees per second for the FTC motor velocity control method.
         rpm = Math.max(0.0, Math.min(MAX_SHOOTER_RPM, rpm));
         flywheelTargetRPM = rpm;
         // This overload works in degrees/second; RPM x 360/60 = RPM x 6.
@@ -416,6 +475,8 @@ public class init_class {
     }
     public double getFlywheelTargetRPM() { return flywheelTargetRPM; }
     public String getShooterStatus() { return shooterStatus; }
+
+    // Checks whether both flywheels have reached their target RPM within the allowed speed tolerance.
     public boolean isFlywheelAtSpeed() {
         return flywheelTargetRPM > 0
                 && Math.abs(getLeftFlywheelRPM() - flywheelTargetRPM) <= RPM_TOLERANCE
@@ -427,6 +488,9 @@ public class init_class {
     public double getTargetXDegrees() { return txDegrees; }
     public double getTargetDistanceMeters() { return horizontalDistanceM; }
 
+
+    // Stops all motors and shuts down the Limelight.
+    // Resets stored motor power and target speed values when the robot operation ends.
     public void stopAll() {
         frontLeft.setPower(0);
         backLeft.setPower(0);
