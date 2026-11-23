@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode.RobotCode2627;
 
+import androidx.annotation.NonNull;
+
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.hardware.limelightvision.LLResultTypes;
@@ -139,13 +141,13 @@ public class init_class {
 
     public void driveMotors(double forward, double strafe, double turn) {
         // Optional joystick deadzone applied independently.
-        if (Math.abs(forward) < 0.05) forward = 0;
-        if (Math.abs(strafe) < 0.05) strafe = 0;
-        if (Math.abs(turn) < 0.05) turn = 0;
+        if (Math.abs(forward) < 0.1) forward = 0;
+        if (Math.abs(strafe) < 0.1) strafe = 0;
+        if (Math.abs(turn) < 0.1) turn = 0;
         double fl = forward + strafe + turn;
         double bl = forward - strafe + turn;
-        double fr = forward - strafe - turn;
-        double br = forward + strafe - turn;
+        double fr = forward + strafe - turn;
+        double br = forward - strafe - turn;
         double denom = Math.max(1.0,
                 Math.max(Math.max(Math.abs(fl), Math.abs(bl)),
                         Math.max(Math.abs(fr), Math.abs(br))));
@@ -203,7 +205,7 @@ public class init_class {
     }
 
     private LLResultTypes.FiducialResult bestTag(
-            List<LLResultTypes.FiducialResult> tags, TargetMode cell) {
+            @NonNull List<LLResultTypes.FiducialResult> tags, TargetMode cell) {
         LLResultTypes.FiducialResult best = null;
         double minAbsTx = Double.POSITIVE_INFINITY;
         for (LLResultTypes.FiducialResult tag : tags) {
