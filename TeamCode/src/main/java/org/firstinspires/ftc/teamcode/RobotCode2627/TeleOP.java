@@ -60,9 +60,9 @@ public class TeleOP extends OpMode {
     @Override
     public void loop() {
         // Gamepad 1: mecanum drive.
-        double forward = -gamepad1.left_stick_y;
-        double strafe = gamepad1.left_stick_x;
-        double turn = gamepad1.right_stick_x;
+        double forward = gamepad1.left_stick_y;
+        double strafe = -gamepad1.left_stick_x;
+        double turn = -gamepad1.right_stick_x;
         drive.driveMotors(forward, strafe, turn);
 
         double GateClosed = 0;
@@ -71,7 +71,7 @@ public class TeleOP extends OpMode {
         double FIup = 0;
 
         // Gamepad 2: intake; 1000 encoder ticks/s (from your original code).
-        drive.setIntakeVelocity(gamepad2.left_bumper ? 3000.0 : 0.0);
+        drive.setIntakeVelocity(gamepad2.left_bumper ? 6000.0 : 0.0);
 
         // Gamepad 2 D-pad: manually choose scoring/audience group or AUTO.
         boolean left = gamepad2.dpad_left;
@@ -111,7 +111,7 @@ public class TeleOP extends OpMode {
         // Read camera ONCE each loop, share result with turret + shooter.
         drive.updateVision();
 
-        // Hold gamepad2 right bumper: auto-aim. Otherwise manual right stick X.
+        // Hold gamepad2 right bumper: auto-aim. Otherwise, manual right stick X.
         drive.controlTurret(gamepad2.right_bumper, gamepad2.right_stick_x);
 
         // G2 LT: low-speed RPM TEST. G2 RT: distance-based RPM (after calibration).

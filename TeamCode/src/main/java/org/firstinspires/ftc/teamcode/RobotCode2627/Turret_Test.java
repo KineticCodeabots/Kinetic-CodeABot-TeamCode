@@ -13,16 +13,14 @@ public class Turret_Test extends OpMode{
 
     private DcMotorEx FlywheelLeft;
     private DcMotorEx FlywheelRight;
-    private DcMotorEx RotationMotor;
-    private Servo BPServo;
 
     public void handle_gamepad(){
         if (gamepad1.a) {
             FlywheelLeft.setVelocity(1000);
             FlywheelRight.setVelocity(1000);
         } else if (gamepad1.b) {
-            FlywheelLeft.setVelocity(2000);
-            FlywheelRight.setVelocity(2000);
+            FlywheelLeft.setVelocity(3000);
+            FlywheelRight.setVelocity(3000);
         } else if (gamepad1.y) {
             FlywheelLeft.setVelocity(500);
             FlywheelLeft.setVelocity(500);
@@ -31,11 +29,10 @@ public class Turret_Test extends OpMode{
 
     @Override
     public void init() {
-        FlywheelLeft = hardwareMap.get(DcMotorEx.class, "FlywheelMotorLeft");
-        FlywheelRight = hardwareMap.get(DcMotorEx.class, "FlywheelMotorRight");
-        RotationMotor = hardwareMap.get(DcMotorEx.class, "TurretRotationMotor");
-        BPServo = hardwareMap.get(Servo.class, "BackPL ateServo");
-        FlywheelLeft.setDirection(DcMotorEx.Direction.REVERSE);
+        FlywheelLeft = hardwareMap.get(DcMotorEx.class, "FlywheelLeft");
+        FlywheelRight = hardwareMap.get(DcMotorEx.class, "FlywheelRight");
+        FlywheelLeft.setDirection(DcMotorEx.Direction.FORWARD);
+        FlywheelRight.setDirection(DcMotorEx.Direction.REVERSE);
         FlywheelLeft.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         FlywheelRight.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 

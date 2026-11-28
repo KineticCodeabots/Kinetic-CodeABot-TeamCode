@@ -93,7 +93,7 @@ public class init_class {
         flywheelRight = hwMap.get(DcMotorEx.class, "FlywheelRight");
         turret = hwMap.get(DcMotorEx.class, "Turret");
         limelight = hwMap.get(Limelight3A.class, "limelight");
-        TurretGate = hwMap.get(Servo.class, "turretGate");
+        TurretGate = hwMap.get(Servo.class, "GateServo");
         FlowerIntakeR = hwMap.get(Servo.class, "FlowerIntakeR");
         FLowerIntakeL = hwMap.get(Servo.class, "FlowerIntakeL");
 
@@ -144,8 +144,8 @@ public class init_class {
         if (Math.abs(turn) < 0.05) turn = 0;
         double fl = forward + strafe + turn;
         double bl = forward - strafe + turn;
-        double fr = forward - strafe - turn;
-        double br = forward + strafe - turn;
+        double fr = forward + strafe - turn;
+        double br = forward - strafe - turn;
         double denom = Math.max(1.0,
                 Math.max(Math.max(Math.abs(fl), Math.abs(bl)),
                         Math.max(Math.abs(fr), Math.abs(br))));
